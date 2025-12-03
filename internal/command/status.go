@@ -101,7 +101,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	// Display current state
-	sqitch.UI.EmitLn("# Change:   %s", state.Change)
+	sqitch.UI.EmitLn("# Change:   %s", state.ChangeID)
 	sqitch.UI.EmitLn("# Name:     %s", state.Change)
 
 	if len(state.Tags) > 0 {
