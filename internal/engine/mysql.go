@@ -2,6 +2,7 @@ package engine
 
 import (
 	"database/sql"
+	"embed"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +13,9 @@ import (
 	"github.com/sqitchers/sqitch-go/internal/plan"
 	"github.com/sqitchers/sqitch-go/internal/target"
 )
+
+//go:embed sql/mysql_registry.sql
+var mysqlRegistryFS embed.FS
 
 // MySQL implements the Engine interface for MySQL/MariaDB
 type MySQL struct {
@@ -95,91 +99,32 @@ func (m *MySQL) Initialize() error {
 		return fmt.Errorf("failed to create registry database: %w", err)
 	}
 
-	// Create tables
-	schema := m.registrySchema()
+	// Read embedded schema
+	schemaBytes, err := mysqlRegistryFS.ReadFile("sql/mysql_registry.sql")
+	if err != nil {
+		return fmt.Errorf("failed to read registry schema: %w", err)
+	}
+
+	// Replace table names with registry-qualified names
+	schema := string(schemaBytes)
+
+	// Use the registry database for all operations
+	if _, err := m.db.Exec(fmt.Sprintf("USE `%s`", m.registry)); err != nil {
+		return fmt.Errorf("failed to use registry database: %w", err)
+	}
+
+	// Create tables - split by semicolons and execute each statement
 	for _, stmt := range strings.Split(schema, ";") {
 		stmt = strings.TrimSpace(stmt)
-		if stmt == "" {
+		if stmt == "" || strings.HasPrefix(stmt, "--") {
 			continue
 		}
 		if _, err := m.db.Exec(stmt); err != nil {
-			return fmt.Errorf("failed to create registry: %w", err)
+			return fmt.Errorf("failed to create registry table: %w", err)
 		}
 	}
 
 	return nil
-}
-
-func (m *MySQL) registrySchema() string {
-	return fmt.Sprintf(`
-CREATE TABLE IF NOT EXISTS %[1]s.releases (
-    version         REAL        NOT NULL PRIMARY KEY,
-    installed_at    DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    installer_name  VARCHAR(255) NOT NULL,
-    installer_email VARCHAR(255) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS %[1]s.projects (
-    project         VARCHAR(255) NOT NULL PRIMARY KEY,
-    uri             VARCHAR(512),
-    created_at      DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    creator_name    VARCHAR(255) NOT NULL,
-    creator_email   VARCHAR(255) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS %[1]s.changes (
-    change_id       CHAR(40)     NOT NULL PRIMARY KEY,
-    script_hash     CHAR(40),
-    change          VARCHAR(255) NOT NULL,
-    project         VARCHAR(255) NOT NULL REFERENCES %[1]s.projects(project),
-    note            TEXT         NOT NULL DEFAULT '',
-    committed_at    DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    committer_name  VARCHAR(255) NOT NULL,
-    committer_email VARCHAR(255) NOT NULL,
-    planned_at      DATETIME(6)  NOT NULL,
-    planner_name    VARCHAR(255) NOT NULL,
-    planner_email   VARCHAR(255) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS %[1]s.tags (
-    tag_id          CHAR(40)     NOT NULL PRIMARY KEY,
-    tag             VARCHAR(255) NOT NULL,
-    project         VARCHAR(255) NOT NULL REFERENCES %[1]s.projects(project),
-    change_id       CHAR(40)     NOT NULL REFERENCES %[1]s.changes(change_id),
-    note            TEXT         NOT NULL DEFAULT '',
-    committed_at    DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    committer_name  VARCHAR(255) NOT NULL,
-    committer_email VARCHAR(255) NOT NULL,
-    planned_at      DATETIME(6)  NOT NULL,
-    planner_name    VARCHAR(255) NOT NULL,
-    planner_email   VARCHAR(255) NOT NULL,
-    UNIQUE(project, tag)
-);
-
-CREATE TABLE IF NOT EXISTS %[1]s.dependencies (
-    change_id       CHAR(40)     NOT NULL REFERENCES %[1]s.changes(change_id),
-    type            VARCHAR(16)  NOT NULL,
-    dependency      VARCHAR(255) NOT NULL,
-    dependency_id   CHAR(40)     REFERENCES %[1]s.changes(change_id),
-    PRIMARY KEY(change_id, dependency)
-);
-
-CREATE TABLE IF NOT EXISTS %[1]s.events (
-    event           VARCHAR(16)  NOT NULL,
-    change_id       CHAR(40)     NOT NULL,
-    change          VARCHAR(255) NOT NULL,
-    project         VARCHAR(255) NOT NULL REFERENCES %[1]s.projects(project),
-    note            TEXT         NOT NULL DEFAULT '',
-    requires        TEXT         NOT NULL DEFAULT '',
-    conflicts       TEXT         NOT NULL DEFAULT '',
-    tags            TEXT         NOT NULL DEFAULT '',
-    committed_at    DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    committer_name  VARCHAR(255) NOT NULL,
-    committer_email VARCHAR(255) NOT NULL,
-    planned_at      DATETIME(6)  NOT NULL,
-    planner_name    VARCHAR(255) NOT NULL,
-    planner_email   VARCHAR(255) NOT NULL
-)`, m.registry)
 }
 
 // Deploy runs a deploy script
@@ -261,7 +206,7 @@ func (m *MySQL) RecordDeploy(change *plan.Change, committer, committerEmail stri
 	// Insert change
 	_, err := m.db.Exec(fmt.Sprintf(`
 		INSERT INTO %s.changes (
-			change_id, change, project, note,
+			change_id, `+"`change`"+`, project, note,
 			committed_at, committer_name, committer_email,
 			planned_at, planner_name, planner_email
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -300,8 +245,8 @@ func (m *MySQL) recordEvent(event string, change *plan.Change, committer, commit
 
 	_, err := m.db.Exec(fmt.Sprintf(`
 		INSERT INTO %s.events (
-			event, change_id, change, project, note,
-			requires, conflicts, tags,
+			event, change_id, `+"`change`"+`, project, note,
+			`+"`requires`"+`, conflicts, tags,
 			committed_at, committer_name, committer_email,
 			planned_at, planner_name, planner_email
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -338,7 +283,7 @@ func (m *MySQL) IsDeployed(change *plan.Change) (bool, error) {
 // DeployedChanges returns all deployed changes for a project
 func (m *MySQL) DeployedChanges(project string) ([]*DeployedChange, error) {
 	rows, err := m.db.Query(fmt.Sprintf(`
-		SELECT change_id, change, project, note,
+		SELECT change_id, `+"`change`"+`, project, note,
 		       committed_at, committer_name, committer_email,
 		       planned_at, planner_name, planner_email
 		FROM %s.changes
@@ -371,7 +316,7 @@ func (m *MySQL) CurrentState(project string) (*State, error) {
 	s := &State{Project: project}
 
 	err := m.db.QueryRow(fmt.Sprintf(`
-		SELECT change_id, change, committed_at, committer_name, committer_email
+		SELECT change_id, `+"`change`"+`, committed_at, committer_name, committer_email
 		FROM %s.changes
 		WHERE project = ?
 		ORDER BY committed_at DESC
