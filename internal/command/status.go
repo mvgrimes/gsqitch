@@ -20,6 +20,12 @@ undeployed changes from the plan.`,
 	RunE: runStatus,
 }
 
+var statusTarget string
+
+func init() {
+	statusCmd.Flags().StringVarP(&statusTarget, "target", "t", "", "Target database (name or URI)")
+}
+
 func runStatus(cmd *cobra.Command, args []string) error {
 	// Load plan
 	planPath := sqitch.PlanFile()
@@ -31,15 +37,15 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Resolve target
-	targetArg := ""
-	if len(args) > 0 {
+	// Resolve target: --target flag takes precedence over positional arg
+	targetArg := statusTarget
+	if targetArg == "" && len(args) > 0 {
 		targetArg = args[0]
 	}
 
 	t, err := resolveTarget(targetArg)
 	if err != nil {
-		return fmt.Errorf("no target specified. Use: sqitch status <target>")
+		return fmt.Errorf("no target specified. Use: sqitch status -t <target>")
 	}
 
 	// Create engine

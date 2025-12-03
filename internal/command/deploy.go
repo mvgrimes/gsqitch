@@ -20,6 +20,7 @@ up to a specific change or tag.`,
 }
 
 var (
+	deployTarget  string
 	deployTo      string
 	deployMode    string
 	deployVerify  bool
@@ -27,6 +28,7 @@ var (
 )
 
 func init() {
+	deployCmd.Flags().StringVarP(&deployTarget, "target", "t", "", "Target database (name or URI)")
 	deployCmd.Flags().StringVar(&deployTo, "to", "", "Deploy up to this change or tag")
 	deployCmd.Flags().StringVar(&deployMode, "mode", "all", "Deployment mode: all, tag, or change")
 	deployCmd.Flags().BoolVar(&deployVerify, "verify", false, "Verify after each deploy")
@@ -49,15 +51,15 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Resolve target
-	targetArg := ""
-	if len(args) > 0 {
+	// Resolve target: --target flag takes precedence over positional arg
+	targetArg := deployTarget
+	if targetArg == "" && len(args) > 0 {
 		targetArg = args[0]
 	}
 
 	t, err := resolveTarget(targetArg)
 	if err != nil {
-		return fmt.Errorf("no target specified. Use: sqitch deploy <target>")
+		return fmt.Errorf("no target specified. Use: sqitch deploy -t <target>")
 	}
 
 	// Create engine

@@ -20,11 +20,13 @@ to a specific change or tag.`,
 }
 
 var (
+	revertTarget   string
 	revertTo       string
 	revertNoPrompt bool
 )
 
 func init() {
+	revertCmd.Flags().StringVarP(&revertTarget, "target", "t", "", "Target database (name or URI)")
 	revertCmd.Flags().StringVar(&revertTo, "to", "", "Revert back to this change or tag")
 	revertCmd.Flags().BoolVarP(&revertNoPrompt, "no-prompt", "y", false, "Don't prompt for confirmation")
 }
@@ -40,15 +42,15 @@ func runRevert(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Resolve target
-	targetArg := ""
-	if len(args) > 0 {
+	// Resolve target: --target flag takes precedence over positional arg
+	targetArg := revertTarget
+	if targetArg == "" && len(args) > 0 {
 		targetArg = args[0]
 	}
 
 	t, err := resolveTarget(targetArg)
 	if err != nil {
-		return fmt.Errorf("no target specified. Use: sqitch revert <target>")
+		return fmt.Errorf("no target specified. Use: sqitch revert -t <target>")
 	}
 
 	// Create engine
