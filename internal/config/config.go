@@ -44,6 +44,7 @@ type EngineConfig struct {
 type TargetConfig struct {
 	URI      string
 	Registry string
+	Client   string
 }
 
 // DeployConfig contains deploy command settings
@@ -97,7 +98,6 @@ func Load(projectDir string) (*Config, error) {
 	// Load environment variable overrides
 	cfg.loadEnvOverrides()
 
-	fmt.Printf("%+v\n", cfg)
 	return cfg, nil
 }
 
@@ -169,6 +169,7 @@ func (c *Config) LoadFile(path string) error {
 			c.Target[targetName] = &TargetConfig{
 				URI:      sec.Key("uri").String(),
 				Registry: sec.Key("registry").String(),
+				Client:   sec.Key("client").String(),
 			}
 		}
 	}
@@ -223,4 +224,43 @@ func (c *Config) GetTargetConfig(target string) *TargetConfig {
 		return tc
 	}
 	return &TargetConfig{}
+}
+
+// ResolveEngineTarget resolves the target for an engine.
+// If engine.target is a named target reference (not a URI), it returns
+// the named target's configuration merged with engine settings.
+// Returns: uri, registry, client, targetName
+func (c *Config) ResolveEngineTarget(engine string) (uri, registry, client, targetName string) {
+	ec := c.GetEngineConfig(engine)
+	if ec.Target == "" {
+		return "", ec.Registry, ec.Client, ""
+	}
+
+	// Check if target looks like a URI (contains ":" for scheme)
+	// Named targets are just identifiers without colons
+	if strings.Contains(ec.Target, ":") {
+		// It's a URI directly
+		return ec.Target, ec.Registry, ec.Client, ""
+	}
+
+	// It's a named target reference
+	tc, ok := c.Target[ec.Target]
+	if !ok {
+		// Named target not found, treat as URI anyway
+		return ec.Target, ec.Registry, ec.Client, ""
+	}
+
+	// Merge: target config takes precedence over engine config
+	uri = tc.URI
+	registry = tc.Registry
+	if registry == "" {
+		registry = ec.Registry
+	}
+	client = tc.Client
+	if client == "" {
+		client = ec.Client
+	}
+	targetName = ec.Target
+
+	return uri, registry, client, targetName
 }

@@ -6,9 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/sqitchers/sqitch-go/internal/engine"
 	"github.com/sqitchers/sqitch-go/internal/plan"
-	"github.com/sqitchers/sqitch-go/internal/target"
 )
 
 var statusCmd = &cobra.Command{
@@ -33,29 +31,19 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Get target
-	targetURI := ""
+	// Resolve target
+	targetArg := ""
 	if len(args) > 0 {
-		targetURI = args[0]
-	} else if sqitch.Config.Core.Engine != "" {
-		ec := sqitch.Config.GetEngineConfig(sqitch.Config.Core.Engine)
-		if ec.Target != "" {
-			targetURI = ec.Target
-		}
+		targetArg = args[0]
 	}
 
-	if targetURI == "" {
+	t, err := resolveTarget(targetArg)
+	if err != nil {
 		return fmt.Errorf("no target specified. Use: sqitch status <target>")
 	}
 
-	// Parse target
-	t, err := target.New("default", targetURI)
-	if err != nil {
-		return fmt.Errorf("invalid target: %w", err)
-	}
-
 	// Create engine
-	eng, err := engine.New(t)
+	eng, err := createEngine(t)
 	if err != nil {
 		return err
 	}
@@ -72,7 +60,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to check registry: %w", err)
 	}
 
-	sqitch.UI.EmitLn("# On database %s", targetURI)
+	sqitch.UI.EmitLn("# On database %s", t.URI.String())
 	sqitch.UI.EmitLn("# Project: %s", p.Project)
 	sqitch.UI.EmitLn("#")
 

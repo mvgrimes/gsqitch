@@ -5,9 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/sqitchers/sqitch-go/internal/engine"
 	"github.com/sqitchers/sqitch-go/internal/plan"
-	"github.com/sqitchers/sqitch-go/internal/target"
 )
 
 var revertCmd = &cobra.Command{
@@ -42,35 +40,25 @@ func runRevert(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Get target
-	targetURI := ""
+	// Resolve target
+	targetArg := ""
 	if len(args) > 0 {
-		targetURI = args[0]
-	} else if sqitch.Config.Core.Engine != "" {
-		ec := sqitch.Config.GetEngineConfig(sqitch.Config.Core.Engine)
-		if ec.Target != "" {
-			targetURI = ec.Target
-		}
+		targetArg = args[0]
 	}
 
-	if targetURI == "" {
+	t, err := resolveTarget(targetArg)
+	if err != nil {
 		return fmt.Errorf("no target specified. Use: sqitch revert <target>")
 	}
 
-	// Parse target
-	t, err := target.New("default", targetURI)
-	if err != nil {
-		return fmt.Errorf("invalid target: %w", err)
-	}
-
 	// Create engine
-	eng, err := engine.New(t)
+	eng, err := createEngine(t)
 	if err != nil {
 		return err
 	}
 
 	// Connect
-	sqitch.UI.Comment("Connecting to %s", targetURI)
+	sqitch.UI.Comment("Connecting to %s", t.URI.String())
 	if err := eng.Connect(); err != nil {
 		return fmt.Errorf("failed to connect: %w", err)
 	}
@@ -148,7 +136,7 @@ func runRevert(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	sqitch.UI.Info("Reverting changes from %s", targetURI)
+	sqitch.UI.Info("Reverting changes from %s", t.URI.String())
 
 	// Revert each change
 	for _, change := range toRevert {

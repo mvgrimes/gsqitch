@@ -5,9 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/sqitchers/sqitch-go/internal/engine"
 	"github.com/sqitchers/sqitch-go/internal/plan"
-	"github.com/sqitchers/sqitch-go/internal/target"
 )
 
 var deployCmd = &cobra.Command{
@@ -51,36 +49,25 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Get target
-	targetURI := ""
+	// Resolve target
+	targetArg := ""
 	if len(args) > 0 {
-		targetURI = args[0]
-	} else if sqitch.Config.Core.Engine != "" {
-		// Try to get default target from engine config
-		ec := sqitch.Config.GetEngineConfig(sqitch.Config.Core.Engine)
-		if ec.Target != "" {
-			targetURI = ec.Target
-		}
+		targetArg = args[0]
 	}
 
-	if targetURI == "" {
+	t, err := resolveTarget(targetArg)
+	if err != nil {
 		return fmt.Errorf("no target specified. Use: sqitch deploy <target>")
 	}
 
-	// Parse target
-	t, err := target.New("default", targetURI)
-	if err != nil {
-		return fmt.Errorf("invalid target: %w", err)
-	}
-
 	// Create engine
-	eng, err := engine.New(t)
+	eng, err := createEngine(t)
 	if err != nil {
 		return err
 	}
 
 	// Connect
-	sqitch.UI.Comment("Connecting to %s", targetURI)
+	sqitch.UI.Comment("Connecting to %s", t.URI.String())
 	if err := eng.Connect(); err != nil {
 		return fmt.Errorf("failed to connect: %w", err)
 	}
@@ -148,7 +135,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	sqitch.UI.Info("Deploying changes to %s", targetURI)
+	sqitch.UI.Info("Deploying changes to %s", t.URI.String())
 
 	// Deploy each change
 	for _, change := range toDeploy {
