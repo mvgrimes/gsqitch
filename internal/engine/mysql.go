@@ -56,6 +56,13 @@ func (m *MySQL) Target() *target.Target {
 
 // Connect connects to the database
 func (m *MySQL) Connect() error {
+	// Check for password in environment variable if not set in URI
+	if m.target.URI.Password == "" {
+		if pwd := os.Getenv("MYSQL_PWD"); pwd != "" {
+			m.target.URI.Password = pwd
+		}
+	}
+
 	dsn := m.target.URI.DSN()
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
