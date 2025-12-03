@@ -1,0 +1,24 @@
+logs
+*.log
+
+# dotenv environment variables file
+.env
+.env.*
+.autoenv.zsh
+
+# tmp files
+tmp/
+data/
+.DS_Store
+
+# Editor
+Session.vim
+
+# Added by goreleaser init:
+dist/
+
+# Samples
+
+# Build artifacts
+/main
+/gsqitch
