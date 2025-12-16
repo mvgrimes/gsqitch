@@ -108,12 +108,12 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	tmplData := templateData{
-		Change:       changeName,
-		Project:      p.Project,
-		Author:       fmt.Sprintf("%s <%s>", sqitch.UserName, sqitch.UserEmail),
-		Date:         change.Timestamp.Format("2006-01-02"),
-		Requires:     formatRequiresList(requires),
-		Note:         addNote,
+		Change:   changeName,
+		Project:  p.Project,
+		Author:   fmt.Sprintf("%s <%s>", sqitch.UserName, sqitch.UserEmail),
+		Date:     change.Timestamp.Format("2006-01-02"),
+		Requires: formatRequiresList(requires),
+		Note:     addNote,
 	}
 
 	for _, s := range scripts {

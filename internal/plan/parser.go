@@ -11,18 +11,18 @@ import (
 
 // Parser parses sqitch plan files
 type Parser struct {
-	plan      *Plan
-	lineNum   int
+	plan       *Plan
+	lineNum    int
 	lastChange *Change
 }
 
 // Regular expressions for parsing
 var (
-	pragmaRE    = regexp.MustCompile(`^%([\w-]+)=(.*)$`)
-	changeRE    = regexp.MustCompile(`^(\w[\w\-/]*)(?:\s+\[([^\]]*)\])?\s+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)\s+(.+?)\s+<([^>]*)>(?:\s+#\s*(.*))?$`)
-	tagRE       = regexp.MustCompile(`^@([\w\-./]+)\s+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)\s+(.+?)\s+<([^>]*)>(?:\s+#\s*(.*))?$`)
-	commentRE   = regexp.MustCompile(`^\s*#.*$`)
-	blankRE     = regexp.MustCompile(`^\s*$`)
+	pragmaRE  = regexp.MustCompile(`^%([\w-]+)=(.*)$`)
+	changeRE  = regexp.MustCompile(`^(\w[\w\-/]*)(?:\s+\[([^\]]*)\])?\s+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)\s+(.+?)\s+<([^>]*)>(?:\s+#\s*(.*))?$`)
+	tagRE     = regexp.MustCompile(`^@([\w\-./]+)\s+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)\s+(.+?)\s+<([^>]*)>(?:\s+#\s*(.*))?$`)
+	commentRE = regexp.MustCompile(`^\s*#.*$`)
+	blankRE   = regexp.MustCompile(`^\s*$`)
 )
 
 // Parse parses a plan from a reader
