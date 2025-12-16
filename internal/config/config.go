@@ -111,34 +111,54 @@ func (c *Config) LoadFile(path string) error {
 		return err
 	}
 
-	// Parse [core] section
+	// Parse [core] section - only update non-empty values
 	if sec := iniFile.Section("core"); sec != nil {
-		c.Core.Engine = sec.Key("engine").String()
-		c.Core.TopDir = sec.Key("top_dir").String()
-		c.Core.PlanFile = sec.Key("plan_file").String()
-		c.Core.Extension = sec.Key("extension").String()
+		if v := sec.Key("engine").String(); v != "" {
+			c.Core.Engine = v
+		}
+		if v := sec.Key("top_dir").String(); v != "" {
+			c.Core.TopDir = v
+		}
+		if v := sec.Key("plan_file").String(); v != "" {
+			c.Core.PlanFile = v
+		}
+		if v := sec.Key("extension").String(); v != "" {
+			c.Core.Extension = v
+		}
 	}
 
-	// Parse [user] section
+	// Parse [user] section - only update non-empty values
 	if sec := iniFile.Section("user"); sec != nil {
-		c.User.Name = sec.Key("name").String()
-		c.User.Email = sec.Key("email").String()
+		if v := sec.Key("name").String(); v != "" {
+			c.User.Name = v
+		}
+		if v := sec.Key("email").String(); v != "" {
+			c.User.Email = v
+		}
 	}
 
 	// Parse [deploy] section
 	if sec := iniFile.Section("deploy"); sec != nil {
-		c.Deploy.Verify, _ = sec.Key("verify").Bool()
-		c.Deploy.Mode = sec.Key("mode").String()
+		if sec.HasKey("verify") {
+			c.Deploy.Verify, _ = sec.Key("verify").Bool()
+		}
+		if v := sec.Key("mode").String(); v != "" {
+			c.Deploy.Mode = v
+		}
 	}
 
 	// Parse [revert] section
 	if sec := iniFile.Section("revert"); sec != nil {
-		c.Revert.NoPrompt, _ = sec.Key("no_prompt").Bool()
+		if sec.HasKey("no_prompt") {
+			c.Revert.NoPrompt, _ = sec.Key("no_prompt").Bool()
+		}
 	}
 
 	// Parse [add] section
 	if sec := iniFile.Section("add"); sec != nil {
-		c.Add.TemplateDirectory = sec.Key("template_directory").String()
+		if v := sec.Key("template_directory").String(); v != "" {
+			c.Add.TemplateDirectory = v
+		}
 	}
 
 	// Parse [add.variables] section
@@ -148,28 +168,46 @@ func (c *Config) LoadFile(path string) error {
 		}
 	}
 
-	// Parse [engine "name"] sections
+	// Parse [engine "name"] sections - merge with existing
 	for _, sec := range iniFile.Sections() {
 		name := sec.Name()
 		if strings.HasPrefix(name, "engine ") {
 			engineName := strings.Trim(strings.TrimPrefix(name, "engine "), "\"")
-			c.Engine[engineName] = &EngineConfig{
-				Client:   sec.Key("client").String(),
-				Registry: sec.Key("registry").String(),
-				Target:   sec.Key("target").String(),
+			ec := c.Engine[engineName]
+			if ec == nil {
+				ec = &EngineConfig{}
+				c.Engine[engineName] = ec
+			}
+			if v := sec.Key("client").String(); v != "" {
+				ec.Client = v
+			}
+			if v := sec.Key("registry").String(); v != "" {
+				ec.Registry = v
+			}
+			if v := sec.Key("target").String(); v != "" {
+				ec.Target = v
 			}
 		}
 	}
 
-	// Parse [target "name"] sections
+	// Parse [target "name"] sections - merge with existing
 	for _, sec := range iniFile.Sections() {
 		name := sec.Name()
 		if strings.HasPrefix(name, "target ") {
 			targetName := strings.Trim(strings.TrimPrefix(name, "target "), "\"")
-			c.Target[targetName] = &TargetConfig{
-				URI:      sec.Key("uri").String(),
-				Registry: sec.Key("registry").String(),
-				Client:   sec.Key("client").String(),
+			tc := c.Target[targetName]
+			if tc == nil {
+				tc = &TargetConfig{}
+				c.Target[targetName] = tc
+			}
+			if v := sec.Key("uri").String(); v != "" {
+				tc.URI = v
+			}
+			if v := sec.Key("registry").String(); v != "" {
+				tc.Registry = v
+			}
+			if v := sec.Key("client").String(); v != "" {
+				tc.Client = v
 			}
 		}
 	}
