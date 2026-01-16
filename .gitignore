@@ -1,4 +1,4 @@
-logs
+# logs
 *.log
 
 # dotenv environment variables file
@@ -6,10 +6,10 @@ logs
 .env.*
 .autoenv.zsh
 
-# tmp files
+# tmp, system and ref files
 tmp/
-data/
 .DS_Store
+/docs/ref/
 
 # Editor
 Session.vim
