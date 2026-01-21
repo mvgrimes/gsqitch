@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 
 	"github.com/sqitchers/sqitch-go/internal/config"
 	"github.com/sqitchers/sqitch-go/internal/ui"
@@ -89,6 +90,26 @@ func (s *Sqitch) RevertDir() string {
 // VerifyDir returns the verify scripts directory
 func (s *Sqitch) VerifyDir() string {
 	return filepath.Join(s.TopDir, "verify")
+}
+
+// Editor returns the editor command
+func (s *Sqitch) Editor() string {
+	if v := os.Getenv("SQITCH_EDITOR"); v != "" {
+		return v
+	}
+	if s.Config.Core.Editor != "" {
+		return s.Config.Core.Editor
+	}
+	if v := os.Getenv("VISUAL"); v != "" {
+		return v
+	}
+	if v := os.Getenv("EDITOR"); v != "" {
+		return v
+	}
+	if runtime.GOOS == "windows" {
+		return "notepad.exe"
+	}
+	return "vi"
 }
 
 // getUserIdentity gets the user's name and email from config or system

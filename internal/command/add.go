@@ -1,8 +1,10 @@
 package command
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -76,6 +78,15 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		conflicts = append(conflicts, d)
 	}
 
+	note := addNote
+	if note == "" {
+		var err error
+		note, err = getNoteFromEditor(changeName)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Create change
 	change := &plan.Change{
 		Name:         changeName,
@@ -84,7 +95,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		PlannerEmail: sqitch.UserEmail,
 		Requires:     requires,
 		Conflicts:    conflicts,
-		Note:         addNote,
+		Note:         note,
 	}
 
 	// Add to plan
@@ -113,7 +124,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		Author:   fmt.Sprintf("%s <%s>", sqitch.UserName, sqitch.UserEmail),
 		Date:     change.Timestamp.Format("2006-01-02"),
 		Requires: formatRequiresList(requires),
-		Note:     addNote,
+		Note:     note,
 	}
 
 	for _, s := range scripts {
@@ -189,6 +200,74 @@ func formatRequiresList(deps []*plan.Depend) string {
 		parts[i] = d.String()
 	}
 	return strings.Join(parts, ", ")
+}
+
+func getNoteFromEditor(changeName string) (string, error) {
+	ext := sqitch.Extension()
+	scripts := []string{
+		filepath.Join("deploy", changeName+"."+ext),
+		filepath.Join("revert", changeName+"."+ext),
+		filepath.Join("verify", changeName+"."+ext),
+	}
+
+	template := fmt.Sprintf(`
+
+# Please enter a note for your change. Lines starting with '#' will
+# be ignored, and an empty message aborts the add.
+# Change to add:
+#
+#   %s
+#     %s
+#     %s
+#     %s
+#
+`, changeName, scripts[0], scripts[1], scripts[2])
+
+	tmpFile, err := os.CreateTemp("", "sqitch-note-*.txt")
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(template); err != nil {
+		return "", err
+	}
+	tmpFile.Close()
+
+	editor := sqitch.Editor()
+	parts := strings.Fields(editor)
+	parts = append(parts, tmpFile.Name())
+
+	cmd := exec.Command(parts[0], parts[1:]...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("editor failed: %w", err)
+	}
+
+	f, err := os.Open(tmpFile.Name())
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	var result []string
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "#") {
+			result = append(result, line)
+		}
+	}
+
+	note := strings.TrimSpace(strings.Join(result, "\n"))
+	if note == "" {
+		return "", fmt.Errorf("aborting due to empty note")
+	}
+
+	return note, nil
 }
 
 var deployTemplate = `-- Deploy {{.Project}}:{{.Change}} to {{.Project}}

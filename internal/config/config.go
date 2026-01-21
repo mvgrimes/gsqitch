@@ -25,6 +25,7 @@ type CoreConfig struct {
 	TopDir    string
 	PlanFile  string
 	Extension string
+	Editor    string
 }
 
 // UserConfig contains user identity settings
@@ -124,6 +125,9 @@ func (c *Config) LoadFile(path string) error {
 		}
 		if v := sec.Key("extension").String(); v != "" {
 			c.Core.Extension = v
+		}
+		if v := sec.Key("editor").String(); v != "" {
+			c.Core.Editor = v
 		}
 	}
 
