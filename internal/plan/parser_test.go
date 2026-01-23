@@ -163,3 +163,42 @@ posts 2024-01-15T11:00:00Z John Doe <john@example.com>
 		t.Errorf("len(Changes) = %d, want 2", len(p.Changes))
 	}
 }
+
+func TestPreserveCommentsAndBlankLines(t *testing.T) {
+	input := `%syntax-version=1.0.0
+%project=myproject
+
+# Header comment
+users 2024-01-15T10:00:00Z John Doe <john@example.com> # note
+
+# Middle comment
+@v1.0.0 2024-01-15T12:00:00Z John Doe <john@example.com>
+
+  # Indented comment
+posts 2024-01-15T11:00:00Z John Doe <john@example.com>
+`
+	p, err := Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+
+	var sb strings.Builder
+	if err := p.Write(&sb); err != nil {
+		t.Fatalf("Write failed: %v", err)
+	}
+
+	output := sb.String()
+	// input doesn't have a trailing newline for the last line,
+	// but Write appends one for every line.
+	// Let's ensure they match.
+	if output != input {
+		// If input doesn't end in newline, output will have one extra.
+		if !strings.HasSuffix(input, "\n") {
+			if output != input+"\n" {
+				t.Errorf("Output mismatch.\nGot:\n%q\nWant:\n%q", output, input+"\n")
+			}
+		} else {
+			t.Errorf("Output mismatch.\nGot:\n%q\nWant:\n%q", output, input)
+		}
+	}
+}

@@ -15,16 +15,47 @@ type Plan struct {
 	Changes       []*Change
 	Tags          []*Tag
 	FilePath      string
+	Lines         []Line
+}
+
+// Line represents a line in the plan file
+type Line interface {
+	FormatLine() string
+}
+
+// CommentLine represents a comment line
+type CommentLine string
+
+func (l CommentLine) FormatLine() string { return string(l) }
+
+// BlankLine represents a blank line
+type BlankLine struct{}
+
+func (l BlankLine) FormatLine() string { return "" }
+
+// PragmaLine represents a pragma line
+type PragmaLine struct {
+	Key   string
+	Value string
+}
+
+func (l PragmaLine) FormatLine() string {
+	return fmt.Sprintf("%%%s=%s", l.Key, l.Value)
 }
 
 // New creates a new empty plan
 func New(project string) *Plan {
-	return &Plan{
+	p := &Plan{
 		SyntaxVersion: "1.0.0",
 		Project:       project,
 		Changes:       make([]*Change, 0),
 		Tags:          make([]*Tag, 0),
+		Lines:         make([]Line, 0),
 	}
+	p.Lines = append(p.Lines, &PragmaLine{Key: "syntax-version", Value: p.SyntaxVersion})
+	p.Lines = append(p.Lines, &PragmaLine{Key: "project", Value: p.Project})
+	p.Lines = append(p.Lines, BlankLine{})
+	return p
 }
 
 // ParseFile parses a plan file from disk
@@ -45,24 +76,9 @@ func ParseFile(path string) (*Plan, error) {
 
 // Write writes the plan to a writer
 func (p *Plan) Write(w io.Writer) error {
-	// Write pragmas
-	fmt.Fprintf(w, "%%syntax-version=%s\n", p.SyntaxVersion)
-	fmt.Fprintf(w, "%%project=%s\n", p.Project)
-	if p.URI != "" {
-		fmt.Fprintf(w, "%%uri=%s\n", p.URI)
+	for _, line := range p.Lines {
+		fmt.Fprintln(w, line.FormatLine())
 	}
-	fmt.Fprintln(w)
-
-	// Write changes and tags
-	for _, change := range p.Changes {
-		fmt.Fprintln(w, change.FormatLine())
-
-		// Write tags attached to this change
-		for _, tag := range change.Tags {
-			fmt.Fprintln(w, tag.FormatLine())
-		}
-	}
-
 	return nil
 }
 
@@ -90,6 +106,7 @@ func (p *Plan) AddChange(c *Change) {
 	c.ID = c.CalculateID()
 
 	p.Changes = append(p.Changes, c)
+	p.Lines = append(p.Lines, c)
 }
 
 // AddTag adds a tag to the most recent change
@@ -104,6 +121,7 @@ func (p *Plan) AddTag(t *Tag) error {
 
 	p.Tags = append(p.Tags, t)
 	t.Change.Tags = append(t.Change.Tags, t)
+	p.Lines = append(p.Lines, t)
 
 	return nil
 }

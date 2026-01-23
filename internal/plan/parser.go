@@ -53,13 +53,15 @@ func Parse(r io.Reader) (*Plan, error) {
 }
 
 func (p *Parser) parseLine(line string) error {
-	// Skip blank lines
+	// Blank lines
 	if blankRE.MatchString(line) {
+		p.plan.Lines = append(p.plan.Lines, BlankLine{})
 		return nil
 	}
 
-	// Skip comments
+	// Comments
 	if commentRE.MatchString(line) {
+		p.plan.Lines = append(p.plan.Lines, CommentLine(line))
 		return nil
 	}
 
@@ -78,6 +80,7 @@ func (p *Parser) parseLine(line string) error {
 }
 
 func (p *Parser) parsePragma(key, value string) error {
+	p.plan.Lines = append(p.plan.Lines, &PragmaLine{Key: key, Value: value})
 	switch key {
 	case "syntax-version":
 		p.plan.SyntaxVersion = value
@@ -133,6 +136,7 @@ func (p *Parser) parseChange(line string) error {
 	change.ID = change.CalculateID()
 
 	p.plan.Changes = append(p.plan.Changes, change)
+	p.plan.Lines = append(p.plan.Lines, change)
 	p.lastChange = change
 
 	return nil
@@ -173,6 +177,7 @@ func (p *Parser) parseTag(line string) error {
 	tag.ID = tag.CalculateID()
 
 	p.plan.Tags = append(p.plan.Tags, tag)
+	p.plan.Lines = append(p.plan.Lines, tag)
 	p.lastChange.Tags = append(p.lastChange.Tags, tag)
 
 	return nil
