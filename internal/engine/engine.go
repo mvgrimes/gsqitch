@@ -24,7 +24,7 @@ type Engine interface {
 	Verify(change *plan.Change, scriptPath string) error
 
 	// Recording operations
-	RecordDeploy(change *plan.Change, committer string, committerEmail string) error
+	RecordDeploy(change *plan.Change, committer string, committerEmail string, scriptHash string) error
 	RecordRevert(change *plan.Change, committer string, committerEmail string) error
 
 	// Status queries

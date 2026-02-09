@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS `dependencies` (
 CREATE TABLE IF NOT EXISTS `events` (
     `event`           VARCHAR(16)  NOT NULL,
     `change_id`       CHAR(40)     NOT NULL,
+    `script_hash`     CHAR(40),
     `change`          VARCHAR(255) NOT NULL,
     `project`         VARCHAR(255) NOT NULL REFERENCES `projects`(`project`),
     `note`            TEXT         NOT NULL,

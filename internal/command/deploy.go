@@ -1,7 +1,10 @@
 package command
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -143,10 +146,20 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	for _, change := range toDeploy {
 		sqitch.UI.Info("  + %s", change.Name)
 
+		scriptPath := change.DeployPath(sqitch.TopDir, sqitch.Extension())
+		var scriptHash string
+		if _, err := os.Stat(scriptPath); err == nil {
+			scriptHash, err = calculateScriptHash(scriptPath)
+			if err != nil {
+				return fmt.Errorf("failed to calculate script hash: %w", err)
+			}
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+
 		if !deployLogOnly {
 			// Run deploy script
-			scriptPath := change.DeployPath(sqitch.TopDir, sqitch.Extension())
-			if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+			if scriptHash == "" {
 				return fmt.Errorf("deploy script not found: %s", scriptPath)
 			}
 
@@ -167,11 +180,26 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		}
 
 		// Record deployment
-		if err := eng.RecordDeploy(change, sqitch.UserName, sqitch.UserEmail); err != nil {
+		if err := eng.RecordDeploy(change, sqitch.UserName, sqitch.UserEmail, scriptHash); err != nil {
 			return fmt.Errorf("failed to record deploy for %s: %w", change.Name, err)
 		}
 	}
 
 	sqitch.UI.Info("Successfully deployed %d change(s)", len(toDeploy))
 	return nil
+}
+
+func calculateScriptHash(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	h := sha1.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(h.Sum(nil)), nil
 }

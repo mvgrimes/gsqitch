@@ -204,7 +204,7 @@ func (m *MySQL) runScriptWithDriver(script string) error {
 }
 
 // RecordDeploy records a deployment in the registry
-func (m *MySQL) RecordDeploy(change *plan.Change, committer, committerEmail string) error {
+func (m *MySQL) RecordDeploy(change *plan.Change, committer, committerEmail, scriptHash string) error {
 	// Ensure project exists
 	if err := m.ensureProject(change.Plan.Project, change.Plan.URI, committer, committerEmail); err != nil {
 		return err
@@ -213,12 +213,12 @@ func (m *MySQL) RecordDeploy(change *plan.Change, committer, committerEmail stri
 	// Insert change
 	_, err := m.db.Exec(fmt.Sprintf(`
 		INSERT INTO %s.changes (
-			change_id, `+"`change`"+`, project, note,
+			change_id, script_hash, `+"`change`"+`, project, note,
 			committed_at, committer_name, committer_email,
 			planned_at, planner_name, planner_email
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, m.registry),
-		change.ID, change.Name, change.Plan.Project, change.Note,
+		change.ID, scriptHash, change.Name, change.Plan.Project, change.Note,
 		time.Now(), committer, committerEmail,
 		change.Timestamp, change.PlannerName, change.PlannerEmail,
 	)
@@ -227,13 +227,13 @@ func (m *MySQL) RecordDeploy(change *plan.Change, committer, committerEmail stri
 	}
 
 	// Record event
-	return m.recordEvent("deploy", change, committer, committerEmail)
+	return m.recordEvent("deploy", change, committer, committerEmail, scriptHash)
 }
 
 // RecordRevert records a revert in the registry
 func (m *MySQL) RecordRevert(change *plan.Change, committer, committerEmail string) error {
 	// Record event first
-	if err := m.recordEvent("revert", change, committer, committerEmail); err != nil {
+	if err := m.recordEvent("revert", change, committer, committerEmail, ""); err != nil {
 		return err
 	}
 
@@ -245,20 +245,20 @@ func (m *MySQL) RecordRevert(change *plan.Change, committer, committerEmail stri
 	return err
 }
 
-func (m *MySQL) recordEvent(event string, change *plan.Change, committer, committerEmail string) error {
+func (m *MySQL) recordEvent(event string, change *plan.Change, committer, committerEmail, scriptHash string) error {
 	requires := formatDeps(change.Requires)
 	conflicts := formatDeps(change.Conflicts)
 	tags := formatTags(change.Tags)
 
 	_, err := m.db.Exec(fmt.Sprintf(`
 		INSERT INTO %s.events (
-			event, change_id, `+"`change`"+`, project, note,
+			event, change_id, script_hash, `+"`change`"+`, project, note,
 			`+"`requires`"+`, conflicts, tags,
 			committed_at, committer_name, committer_email,
 			planned_at, planner_name, planner_email
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, m.registry),
-		event, change.ID, change.Name, change.Plan.Project, change.Note,
+		event, change.ID, scriptHash, change.Name, change.Plan.Project, change.Note,
 		requires, conflicts, tags,
 		time.Now(), committer, committerEmail,
 		change.Timestamp, change.PlannerName, change.PlannerEmail,
