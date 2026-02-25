@@ -7,7 +7,7 @@ import (
 	"github.com/sqitchers/sqitch-go/internal/command"
 )
 
-var version = "0.1.0"
+var version = "0.1.1"
 
 func main() {
 	if err := command.Execute(); err != nil {
