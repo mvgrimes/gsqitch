@@ -11,6 +11,9 @@ lint:
   govulncheck ./...
 
 release:
+  go mod tidy
+  go fmt ./...
+  just build
   git diff --exit-code
   git tag "{{VERSION}}"
   # Need to create gh repo first

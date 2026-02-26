@@ -58,3 +58,11 @@ homebrew_casks:
     repository:
       owner: mvgrimes
       name: homebrew-tap
+    homepage: https://github.com/mvgrimes/gsqitch
+    description: A Go port of the excellent Sqitch database change management application.
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/lm"]
+          end
