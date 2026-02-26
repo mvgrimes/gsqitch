@@ -16,8 +16,7 @@ release:
   just build
   git diff --exit-code
   git tag "{{VERSION}}"
-  # Need to create gh repo first
-  # git push
-  # git release
-  # git push --tags
+  git push
+  git release
+  git push --tags
   goreleaser release --clean
