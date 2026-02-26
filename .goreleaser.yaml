@@ -59,7 +59,7 @@ homebrew_casks:
       owner: mvgrimes
       name: homebrew-tap
     homepage: https://github.com/mvgrimes/gsqitch
-    description: A Go port of the excellent Sqitch database change management application.
+    description: Go port of the excellent Sqitch database change management application.
     hooks:
       post:
         install: |
