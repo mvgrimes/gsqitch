@@ -14,7 +14,12 @@ fmt:
   go fmt ./...
 
 test:
-  go test ./...
+  # GSQITCH_TEST_TARGET="db:mysql://sqitch:sqitch@localhost:3307/sqitch" go test ./...
+  gotestsum
+
+test-integration:
+  GSQITCH_TEST_TARGET="db:mysql://sqitch:sqitch@localhost:3307/sqitch" go test -tags=integration ./internal/command
+  # GSQITCH_TEST_TARGET="db:mysql://sqitch:sqitch@localhost:3307/sqitch" gotestsum -- -tags=integration ./internal/command
 
 release:
   go mod tidy

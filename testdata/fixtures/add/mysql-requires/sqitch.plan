@@ -1,0 +1,5 @@
+%syntax-version=1.0.0
+%project=sqitch
+
+widgets 2026-03-23T16:18:33Z root <root@bb90a380c52e> # Add widgets
+gadgets [widgets] 2026-03-23T16:18:37Z root <root@12f19ee5e6ef> # Add gadgets

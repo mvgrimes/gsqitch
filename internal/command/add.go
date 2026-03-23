@@ -121,6 +121,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	tmplData := templateData{
 		Change:   changeName,
 		Project:  p.Project,
+		Engine:   sqitch.Config.Core.Engine,
 		Author:   fmt.Sprintf("%s <%s>", sqitch.UserName, sqitch.UserEmail),
 		Date:     change.Timestamp.Format("2006-01-02"),
 		Requires: formatRequiresList(requires),
@@ -170,6 +171,7 @@ func validateChangeName(name string) error {
 type templateData struct {
 	Change   string
 	Project  string
+	Engine   string
 	Author   string
 	Date     string
 	Requires string
@@ -199,7 +201,7 @@ func formatRequiresList(deps []*plan.Depend) string {
 	for i, d := range deps {
 		parts[i] = d.String()
 	}
-	return strings.Join(parts, ", ")
+	return strings.Join(parts, " ")
 }
 
 func getNoteFromEditor(changeName string) (string, error) {
@@ -270,30 +272,32 @@ func getNoteFromEditor(changeName string) (string, error) {
 	return note, nil
 }
 
-var deployTemplate = `-- Deploy {{.Project}}:{{.Change}} to {{.Project}}
+var deployTemplate = `-- Deploy {{.Project}}:{{.Change}} to {{.Engine}}
+{{- if .Requires}}
 -- requires: {{.Requires}}
+{{- end}}
 
 BEGIN;
 
--- XXX Add DDL here.
+-- XXX Add DDLs here.
 
 COMMIT;
 `
 
-var revertTemplate = `-- Revert {{.Project}}:{{.Change}} from {{.Project}}
+var revertTemplate = `-- Revert {{.Project}}:{{.Change}} from {{.Engine}}
 
 BEGIN;
 
--- XXX Add DDL here.
+-- XXX Add DDLs here.
 
 COMMIT;
 `
 
-var verifyTemplate = `-- Verify {{.Project}}:{{.Change}} on {{.Project}}
+var verifyTemplate = `-- Verify {{.Project}}:{{.Change}} on {{.Engine}}
 
 BEGIN;
 
--- XXX Add verification code here.
+-- XXX Add verifications here.
 
 ROLLBACK;
 `
