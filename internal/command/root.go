@@ -9,6 +9,7 @@ var (
 	sqitch    *app.Sqitch
 	verbosity int
 	quiet     bool
+	version   string
 )
 
 var rootCmd = &cobra.Command{
@@ -39,6 +40,7 @@ with support for dependencies, tags, and multiple database targets.`,
 }
 
 func init() {
+	rootCmd.SetVersionTemplate("{{.Version}}\n")
 	rootCmd.PersistentFlags().IntVarP(&verbosity, "verbose", "v", 0, "Increase verbosity")
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Quiet mode - only show errors")
 
@@ -51,6 +53,11 @@ func init() {
 }
 
 // Execute runs the root command
-func Execute() error {
+
+func Execute(versionInfo string) error {
+	if versionInfo != "" {
+		version = versionInfo
+		rootCmd.Version = version
+	}
 	return rootCmd.Execute()
 }

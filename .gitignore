@@ -12,6 +12,9 @@ _tmp/
 .DS_Store
 /docs/ref/
 
+# tickets
+.tickets/
+
 # Editor
 Session.vim
 
