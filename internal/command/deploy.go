@@ -88,6 +88,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		if err := eng.Initialize(); err != nil {
 			return fmt.Errorf("failed to initialize registry: %w", err)
 		}
+		if registrar, ok := eng.(interface{ RegisterRelease(string, string) error }); ok {
+			if err := registrar.RegisterRelease(sqitch.UserName, sqitch.UserEmail); err != nil {
+				return fmt.Errorf("failed to register release: %w", err)
+			}
+		}
 	}
 
 	// Get current state

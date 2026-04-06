@@ -54,7 +54,6 @@ func New(project string) *Plan {
 	}
 	p.Lines = append(p.Lines, &PragmaLine{Key: "syntax-version", Value: p.SyntaxVersion})
 	p.Lines = append(p.Lines, &PragmaLine{Key: "project", Value: p.Project})
-	p.Lines = append(p.Lines, BlankLine{})
 	return p
 }
 
@@ -106,6 +105,15 @@ func (p *Plan) AddChange(c *Change) {
 	c.ID = c.CalculateID()
 
 	p.Changes = append(p.Changes, c)
+	if len(p.Changes) == 1 {
+		if len(p.Lines) == 0 {
+			p.Lines = append(p.Lines, BlankLine{})
+		} else {
+			if _, ok := p.Lines[len(p.Lines)-1].(BlankLine); !ok {
+				p.Lines = append(p.Lines, BlankLine{})
+			}
+		}
+	}
 	p.Lines = append(p.Lines, c)
 }
 

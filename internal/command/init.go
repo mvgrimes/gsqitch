@@ -114,13 +114,13 @@ func generateConfig(project, engine, extension string) string {
 	if engine != "" {
 		config += fmt.Sprintf("\tengine = %s\n", engine)
 	}
+	config += "\tplan_file = sqitch.plan\n"
+	config += "\ttop_dir = .\n"
 	config += fmt.Sprintf("\textension = %s\n", extension)
-	config += "\t# plan_file = sqitch.plan\n"
-	config += "\t# top_dir = .\n"
 
 	if engine != "" {
-		config += fmt.Sprintf("\n[engine \"%s\"]\n", engine)
-		config += "\t# target = db:mysql://user@localhost/database\n"
+		config += fmt.Sprintf("# [engine \"%s\"]\n", engine)
+		config += fmt.Sprintf("\t# target = db:%s:\n", engine)
 		config += "\t# registry = sqitch\n"
 		config += "\t# client = mysql\n"
 	}

@@ -1,0 +1,17 @@
+{
+  "table": "releases",
+  "columns": [
+    "version",
+    "installed_at",
+    "installer_name",
+    "installer_email"
+  ],
+  "rows": [
+    {
+      "installed_at": "2026-03-23T19:56:10.918463Z",
+      "installer_email": "root@cbc6baa43334",
+      "installer_name": "root",
+      "version": "1.1"
+    }
+  ]
+}

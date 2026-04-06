@@ -14,7 +14,7 @@ case "${1:-}" in
     podman run --rm -it \
       -v "${PWD}:${WORKDIR}" \
       -w "${WORKDIR}" \
-      "$IMAGE" sqitch "$@"
+      "$IMAGE" "$@"
     ;;
   *)
     usage

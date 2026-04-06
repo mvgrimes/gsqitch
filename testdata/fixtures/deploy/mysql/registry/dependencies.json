@@ -1,0 +1,10 @@
+{
+  "table": "dependencies",
+  "columns": [
+    "change_id",
+    "type",
+    "dependency",
+    "dependency_id"
+  ],
+  "rows": []
+}

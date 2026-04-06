@@ -120,6 +120,15 @@ func (m *MySQL) Initialize() error {
 	return nil
 }
 
+// RegisterRelease records the registry release information.
+func (m *MySQL) RegisterRelease(installer, installerEmail string) error {
+	_, err := m.db.Exec(fmt.Sprintf(`
+		INSERT IGNORE INTO %s.releases (version, installed_at, installer_name, installer_email)
+		VALUES (1.1, UTC_TIMESTAMP(6), ?, ?)
+	`, m.registry), installer, installerEmail)
+	return err
+}
+
 // Deploy runs a deploy script
 func (m *MySQL) Deploy(change *plan.Change, scriptPath string) error {
 	return m.RunFile(scriptPath)

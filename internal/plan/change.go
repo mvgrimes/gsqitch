@@ -25,30 +25,61 @@ type Change struct {
 
 // CalculateID calculates the SHA1 ID for the change
 func (c *Change) CalculateID() string {
+	content := c.infoString()
+	contentBytes := []byte(content)
+	prefix := fmt.Sprintf("change %d\x00", len(contentBytes))
 	h := sha1.New()
-
-	fmt.Fprintf(h, "project %s\n", c.Plan.Project)
-	fmt.Fprintf(h, "change %s\n", c.Name)
-
-	// Add requires
-	for _, req := range c.Requires {
-		fmt.Fprintf(h, "requires %s\n", req.String())
-	}
-
-	// Add conflicts
-	for _, conf := range c.Conflicts {
-		fmt.Fprintf(h, "conflicts %s\n", conf.String())
-	}
-
-	// Add parent
-	if c.Parent != nil {
-		fmt.Fprintf(h, "parent %s\n", c.Parent.ID)
-	}
-
-	fmt.Fprintf(h, "planner %s <%s>\n", c.PlannerName, c.PlannerEmail)
-	fmt.Fprintf(h, "date %s\n", c.Timestamp.UTC().Format(time.RFC3339))
-
+	_, _ = h.Write([]byte(prefix))
+	_, _ = h.Write(contentBytes)
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+func (c *Change) infoString() string {
+	lines := []string{
+		"project " + c.Plan.Project,
+	}
+	if c.Plan.URI != "" {
+		lines = append(lines, "uri "+c.Plan.URI)
+	}
+	lines = append(lines, "change "+c.Name)
+	if c.Parent != nil {
+		lines = append(lines, "parent "+c.Parent.ID)
+	}
+	lines = append(lines, fmt.Sprintf("planner %s <%s>", c.PlannerName, c.PlannerEmail))
+	lines = append(lines, "date "+c.Timestamp.UTC().Format("2006-01-02T15:04:05Z"))
+
+	if len(c.Requires) > 0 {
+		requires := make([]string, 0, len(c.Requires))
+		for _, req := range c.Requires {
+			requires = append(requires, dependInfoString(req))
+		}
+		lines = append(lines, "requires\n  + "+strings.Join(requires, "\n  + "))
+	}
+	if len(c.Conflicts) > 0 {
+		conflicts := make([]string, 0, len(c.Conflicts))
+		for _, conf := range c.Conflicts {
+			conflicts = append(conflicts, dependInfoString(conf))
+		}
+		lines = append(lines, "conflicts\n  - "+strings.Join(conflicts, "\n  - "))
+	}
+	if c.Note != "" {
+		lines = append(lines, "", c.Note)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func dependInfoString(d *Depend) string {
+	var sb strings.Builder
+	if d.Project != "" {
+		sb.WriteString(d.Project)
+		sb.WriteString(":")
+	}
+	sb.WriteString(d.Change)
+	if d.Tag != "" {
+		sb.WriteString("@")
+		sb.WriteString(d.Tag)
+	}
+	return sb.String()
 }
 
 // FormatLine formats the change for writing to a plan file

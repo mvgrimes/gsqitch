@@ -88,9 +88,18 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create change
+	changeTime := time.Now().UTC()
+	if v := os.Getenv("GSQITCH_TEST_TIMESTAMP"); v != "" {
+		parsed, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			return fmt.Errorf("invalid GSQITCH_TEST_TIMESTAMP: %w", err)
+		}
+		changeTime = parsed.UTC()
+	}
+
 	change := &plan.Change{
 		Name:         changeName,
-		Timestamp:    time.Now().UTC(),
+		Timestamp:    changeTime,
 		PlannerName:  sqitch.UserName,
 		PlannerEmail: sqitch.UserEmail,
 		Requires:     requires,
@@ -119,13 +128,14 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	tmplData := templateData{
-		Change:   changeName,
-		Project:  p.Project,
-		Engine:   sqitch.Config.Core.Engine,
-		Author:   fmt.Sprintf("%s <%s>", sqitch.UserName, sqitch.UserEmail),
-		Date:     change.Timestamp.Format("2006-01-02"),
-		Requires: formatRequiresList(requires),
-		Note:     note,
+		Change:    changeName,
+		Project:   p.Project,
+		Engine:    sqitch.Config.Core.Engine,
+		Author:    fmt.Sprintf("%s <%s>", sqitch.UserName, sqitch.UserEmail),
+		Date:      change.Timestamp.Format("2006-01-02"),
+		Requires:  formatRequiresList(requires),
+		Conflicts: formatRequiresList(conflicts),
+		Note:      note,
 	}
 
 	for _, s := range scripts {
@@ -169,13 +179,14 @@ func validateChangeName(name string) error {
 }
 
 type templateData struct {
-	Change   string
-	Project  string
-	Engine   string
-	Author   string
-	Date     string
-	Requires string
-	Note     string
+	Change    string
+	Project   string
+	Engine    string
+	Author    string
+	Date      string
+	Requires  []string
+	Conflicts []string
+	Note      string
 }
 
 func writeScript(path, tmplStr string, data templateData) error {
@@ -193,15 +204,15 @@ func writeScript(path, tmplStr string, data templateData) error {
 	return tmpl.Execute(f, data)
 }
 
-func formatRequiresList(deps []*plan.Depend) string {
+func formatRequiresList(deps []*plan.Depend) []string {
 	if len(deps) == 0 {
-		return ""
+		return nil
 	}
-	parts := make([]string, len(deps))
-	for i, d := range deps {
-		parts[i] = d.String()
+	parts := make([]string, 0, len(deps))
+	for _, d := range deps {
+		parts = append(parts, d.String())
 	}
-	return strings.Join(parts, " ")
+	return parts
 }
 
 func getNoteFromEditor(changeName string) (string, error) {
@@ -273,10 +284,9 @@ func getNoteFromEditor(changeName string) (string, error) {
 }
 
 var deployTemplate = `-- Deploy {{.Project}}:{{.Change}} to {{.Engine}}
-{{- if .Requires}}
--- requires: {{.Requires}}
-{{- end}}
-
+{{range .Requires}}-- requires: {{.}}
+{{end}}{{range .Conflicts}}-- conflicts: {{.}}
+{{end}}
 BEGIN;
 
 -- XXX Add DDLs here.

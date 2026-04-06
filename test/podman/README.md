@@ -50,3 +50,22 @@ adding Perl dependencies to the host.
 
 To compare with the bundled reference source in `docs/ref`, mount that directory
 and invoke the Perl binary manually inside the container if needed.
+
+## Recreate deploy fixtures
+
+Reset the registry database and regenerate registry fixtures using App::Sqitch:
+
+```
+mysql -h 127.0.0.1 -P 3307 -u sqitch -psqitch -e "CREATE DATABASE IF NOT EXISTS test"
+mysql -h 127.0.0.1 -P 3307 -u sqitch -psqitch -e "DROP DATABASE IF EXISTS sqitch; CREATE DATABASE sqitch"
+
+tmpdir=$(mktemp -d)
+cd "$tmpdir"
+/path/to/gsqitch/test/podman/sqitch-perl.sh run init myproj --engine mysql --top-dir . --plan-file sqitch.plan --extension sql --target db:mysql://sqitch:sqitch@localhost:3307/test --registry sqitch
+/path/to/gsqitch/test/podman/sqitch-perl.sh run add widgets --note "Add widgets"
+/path/to/gsqitch/test/podman/sqitch-perl.sh run deploy --target db:mysql://sqitch:sqitch@host.containers.internal:3307/test --registry sqitch
+
+MYSQL_HOST=127.0.0.1 MYSQL_PORT=3307 MYSQL_USER=sqitch MYSQL_PASSWORD=sqitch MYSQL_DB=sqitch \
+  OUT_DIR=/path/to/gsqitch/testdata/fixtures/deploy/mysql/registry \
+  go run /path/to/gsqitch/test/podman/sqitch_dump_registry.go
+```

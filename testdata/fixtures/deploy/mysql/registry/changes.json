@@ -1,0 +1,31 @@
+{
+  "table": "changes",
+  "columns": [
+    "change_id",
+    "script_hash",
+    "change",
+    "project",
+    "note",
+    "committed_at",
+    "committer_name",
+    "committer_email",
+    "planned_at",
+    "planner_name",
+    "planner_email"
+  ],
+  "rows": [
+    {
+      "change": "widgets",
+      "change_id": "f2903171eb4cbb3bce78774dd6c9b96862436e8e",
+      "committed_at": "2026-03-23T19:56:10.997008Z",
+      "committer_email": "root@cbc6baa43334",
+      "committer_name": "root",
+      "note": "Add widgets",
+      "planned_at": "2026-03-23T19:56:10Z",
+      "planner_email": "root@8015ce98418e",
+      "planner_name": "root",
+      "project": "myproj",
+      "script_hash": "b658a7eb1c57750dcad574619b9e9fb41a366f4e"
+    }
+  ]
+}

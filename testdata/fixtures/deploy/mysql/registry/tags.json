@@ -1,0 +1,17 @@
+{
+  "table": "tags",
+  "columns": [
+    "tag_id",
+    "tag",
+    "project",
+    "change_id",
+    "note",
+    "committed_at",
+    "committer_name",
+    "committer_email",
+    "planned_at",
+    "planner_name",
+    "planner_email"
+  ],
+  "rows": []
+}
