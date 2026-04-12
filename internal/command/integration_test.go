@@ -164,6 +164,7 @@ func TestRevertGadgetsRemovesTables(t *testing.T) {
 	if err := runDeploy(nil, nil); err != nil {
 		t.Fatalf("deploy changes: %v", err)
 	}
+	deployTarget = ""
 
 	revertTarget = targetURI
 	revertNoPrompt = true
@@ -180,6 +181,103 @@ func TestRevertGadgetsRemovesTables(t *testing.T) {
 		"# Name:     widgets",
 		"#   * gadgets",
 	})
+}
+
+func TestRevertPromptsAndRecordsRegistry(t *testing.T) {
+	requireMySQLCommand(t)
+	ctx := newIntegrationContext(t)
+	targetURI := testTargetURI(t)
+	parsed := parseTargetURI(t, targetURI)
+	requireDB(t, parsed)
+	cleanupTables(t, parsed, "widgets", "gadgets")
+	cleanupRegistry(t, parsed, "sqitch")
+
+	ctx.runInit("sqitch")
+	ctx.runAddWidgets()
+	ctx.runAddGadgetsWithRequires()
+	ctx.writeWidgetScripts()
+	ctx.writeGadgetScripts()
+
+	deployTarget = targetURI
+	if err := runDeploy(nil, nil); err != nil {
+		t.Fatalf("deploy changes: %v", err)
+	}
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	oldStdin := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = oldStdin
+		_ = r.Close()
+	})
+	if _, err := w.WriteString("y\n"); err != nil {
+		t.Fatalf("write stdin: %v", err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("close stdin: %v", err)
+	}
+
+	ctx.out.Reset()
+	ctx.errOut.Reset()
+	revertTarget = targetURI
+	revertNoPrompt = false
+	revertTo = "widgets"
+	if err := runRevert(nil, nil); err != nil {
+		t.Fatalf("revert gadgets: %v", err)
+	}
+	revertTo = ""
+	revertTarget = ""
+
+	output := ctx.out.String()
+	if !strings.Contains(output, "The following changes will be reverted:") {
+		t.Fatalf("expected revert prompt output, got: %q", output)
+	}
+	if !containsLine(output, "  - gadgets") {
+		t.Fatalf("expected gadgets in revert list, got: %q", output)
+	}
+	if !strings.Contains(output, "Proceed with revert? [y/N] ") {
+		t.Fatalf("expected confirmation prompt, got: %q", output)
+	}
+
+	registryDB := "sqitch"
+	cmdInfo := mysqlCommandInfo(t, parsed)
+	conn := mysqlConnArgs(cmdInfo, registryDB)
+	changeRows := mysqlQueryLines(t, conn, "SELECT COUNT(*) FROM changes WHERE `change`='gadgets'")
+	if len(changeRows) != 1 {
+		t.Fatalf("expected 1 result for changes count, got %v", changeRows)
+	}
+	changeCount, err := strconv.Atoi(changeRows[0])
+	if err != nil {
+		t.Fatalf("parse changes count: %v", err)
+	}
+	if changeCount != 0 {
+		t.Fatalf("expected gadgets change removed, got %d", changeCount)
+	}
+	widgetRows := mysqlQueryLines(t, conn, "SELECT COUNT(*) FROM changes WHERE `change`='widgets'")
+	if len(widgetRows) != 1 {
+		t.Fatalf("expected 1 result for widget changes count, got %v", widgetRows)
+	}
+	widgetCount, err := strconv.Atoi(widgetRows[0])
+	if err != nil {
+		t.Fatalf("parse widgets count: %v", err)
+	}
+	if widgetCount != 1 {
+		t.Fatalf("expected widgets change to remain, got %d", widgetCount)
+	}
+	eventRows := mysqlQueryLines(t, conn, "SELECT COUNT(*) FROM events WHERE event='revert' AND `change`='gadgets'")
+	if len(eventRows) != 1 {
+		t.Fatalf("expected 1 result for revert events count, got %v", eventRows)
+	}
+	eventCount, err := strconv.Atoi(eventRows[0])
+	if err != nil {
+		t.Fatalf("parse revert events count: %v", err)
+	}
+	if eventCount != 1 {
+		t.Fatalf("expected one revert event for gadgets, got %d", eventCount)
+	}
 }
 
 func TestRedeployGadgetsCreatesTables(t *testing.T) {
