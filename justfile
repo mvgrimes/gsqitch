@@ -1,6 +1,6 @@
 APP      := "gsqitch"
 VER_FILE  := "./cmd/sqitch/main.go"
-MAIN_FILE := "./cmd/sqitchxmux/main.go"
+MAIN_FILE := "./cmd/sqitch/main.go"
 VERSION   := shell('perl -nE "m{version\\s*=\\s*\"(\\d+\\.\\d+\\.\\d+)\"}i && print \$1" ' + VER_FILE)
 
 build:
