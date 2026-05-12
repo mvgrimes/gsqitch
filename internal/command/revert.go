@@ -9,7 +9,7 @@ import (
 )
 
 var revertCmd = &cobra.Command{
-	Use:   "revert [target]",
+	Use:   "revert [to-target]",
 	Short: "Revert changes from a database",
 	Long: `Revert changes from a database target.
 
@@ -42,11 +42,9 @@ func runRevert(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Resolve target: --target flag takes precedence over positional arg
-	targetArg := revertTarget
-	if targetArg == "" && len(args) > 0 {
-		targetArg = args[0]
-	}
+	// Resolve target: --target must be provided as a flag
+	targetArg := resolveTargetArgFromFlag(revertTarget)
+	toArg := resolveToArg(revertTo, args)
 
 	t, err := resolveTarget(targetArg)
 	if err != nil {
@@ -91,17 +89,17 @@ func runRevert(cmd *cobra.Command, args []string) error {
 	var toRevert []*plan.Change
 	stopAt := ""
 
-	if revertTo != "" {
+	if toArg != "" {
 		// Find the target change
-		targetChange := p.GetChange(revertTo)
+		targetChange := p.GetChange(toArg)
 		if targetChange == nil {
-			tag := p.GetTag(revertTo)
+			tag := p.GetTag(toArg)
 			if tag != nil {
 				targetChange = tag.Change
 			}
 		}
 		if targetChange == nil {
-			return fmt.Errorf("unknown change or tag: %s", revertTo)
+			return fmt.Errorf("unknown change or tag: %s", toArg)
 		}
 		stopAt = targetChange.Name
 	}

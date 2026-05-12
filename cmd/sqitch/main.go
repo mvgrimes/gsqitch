@@ -8,7 +8,7 @@ import (
 	"github.com/sqitchers/sqitch-go/internal/command"
 )
 
-var version = "0.1.6"
+var version = "0.1.7"
 
 func main() {
 	versionInfo := fmt.Sprintf("gsqitch (golang) v%s", strings.TrimPrefix(version, "v"))

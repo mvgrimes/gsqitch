@@ -12,7 +12,7 @@ import (
 )
 
 var deployCmd = &cobra.Command{
-	Use:   "deploy [target]",
+	Use:   "deploy [to-target]",
 	Short: "Deploy changes to a database",
 	Long: `Deploy changes to a database target.
 
@@ -54,11 +54,9 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Resolve target: --target flag takes precedence over positional arg
-	targetArg := deployTarget
-	if targetArg == "" && len(args) > 0 {
-		targetArg = args[0]
-	}
+	// Resolve target: --target must be provided as a flag
+	targetArg := resolveTargetArgFromFlag(deployTarget)
+	toArg := resolveToArg(deployTo, args)
 
 	t, err := resolveTarget(targetArg)
 	if err != nil {
@@ -116,17 +114,17 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	// Apply --to filter
-	if deployTo != "" {
-		targetChange := p.GetChange(deployTo)
+	if toArg != "" {
+		targetChange := p.GetChange(toArg)
 		if targetChange == nil {
 			// Try as tag
-			tag := p.GetTag(deployTo)
+			tag := p.GetTag(toArg)
 			if tag != nil {
 				targetChange = tag.Change
 			}
 		}
 		if targetChange == nil {
-			return fmt.Errorf("unknown change or tag: %s", deployTo)
+			return fmt.Errorf("unknown change or tag: %s", toArg)
 		}
 
 		// Filter to only changes up to and including target
