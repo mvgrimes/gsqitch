@@ -19,7 +19,7 @@ _tmp/
 Session.vim
 
 # Added by goreleaser init:
-dist/
+/dist/
 
 # Samples
 
