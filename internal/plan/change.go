@@ -63,7 +63,7 @@ func (c *Change) infoString() string {
 		lines = append(lines, "conflicts\n  - "+strings.Join(conflicts, "\n  - "))
 	}
 	if c.Note != "" {
-		lines = append(lines, "", c.Note)
+		lines = append(lines, "", strings.ReplaceAll(c.Note, "\\n", "\n"))
 	}
 	return strings.Join(lines, "\n")
 }
