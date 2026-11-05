@@ -49,6 +49,7 @@ func init() {
 	rootCmd.AddCommand(addCmd)
 	rootCmd.AddCommand(deployCmd)
 	rootCmd.AddCommand(revertCmd)
+	rootCmd.AddCommand(verifyCmd)
 	rootCmd.AddCommand(statusCmd)
 }
 

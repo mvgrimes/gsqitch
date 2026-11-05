@@ -105,6 +105,45 @@ func TestVerifyWidgetsPasses(t *testing.T) {
 	ctx.runVerify("widgets", targetURI)
 }
 
+func TestVerifyContinuesAfterScriptFailure(t *testing.T) {
+	requireMySQLCommand(t)
+	ctx := newIntegrationContext(t)
+	targetURI := testTargetURI(t)
+	parsed := parseTargetURI(t, targetURI)
+	requireDB(t, parsed)
+	cleanupTables(t, parsed, "widgets", "gadgets")
+	cleanupRegistry(t, parsed, "sqitch")
+
+	ctx.runInit("sqitch")
+	ctx.runAddWidgets()
+	ctx.runAddGadgetsWithRequires()
+	ctx.writeWidgetScripts()
+	ctx.writeGadgetScripts()
+	deployTarget = targetURI
+	if err := runDeploy(nil, nil); err != nil {
+		t.Fatalf("deploy changes: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(ctx.tempDir, "verify", "widgets.sql"), []byte("SELECT * FROM sqitch_verify_missing_table;\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	oldTarget, oldFrom, oldTo := verifyTarget, verifyFrom, verifyTo
+	defer func() { verifyTarget, verifyFrom, verifyTo = oldTarget, oldFrom, oldTo }()
+	verifyTarget, verifyFrom, verifyTo = targetURI, "", ""
+	ctx.out.Reset()
+	if err := runVerify(nil, nil); err == nil || !strings.Contains(err.Error(), "verify failed") {
+		t.Fatalf("expected verify failure, got %v", err)
+	}
+	for _, want := range []string{"widgets .. not ok", "gadgets .. ok", "Verify Summary Report"} {
+		if !strings.Contains(ctx.out.String(), want) {
+			t.Errorf("verify output %q does not contain %q", ctx.out.String(), want)
+		}
+	}
+	assertTableExists(t, parsed, "widgets")
+	assertTableExists(t, parsed, "gadgets")
+	ctx.runStatusExpect(targetURI, []string{"# Name:     gadgets", "# All changes deployed"})
+}
+
 func TestDeployGadgetsCreatesTables(t *testing.T) {
 	requireMySQLCommand(t)
 	ctx := newIntegrationContext(t)
@@ -527,35 +566,15 @@ func (c *integrationContext) writeGadgetScripts() {
 
 func (c *integrationContext) runVerify(changeName, targetURI string) {
 	c.t.Helper()
-	planPath := sqitch.PlanFile()
-	p, err := plan.ParseFile(planPath)
-	if err != nil {
-		c.t.Fatalf("parse plan: %v", err)
-	}
-	change := p.GetChange(changeName)
-	if change == nil {
-		c.t.Fatalf("expected change %s in plan", changeName)
-	}
-
-	resolved, err := target.New("", targetURI)
-	if err != nil {
-		c.t.Fatalf("parse target: %v", err)
-	}
-	eng, err := createEngine(resolved)
-	if err != nil {
-		c.t.Fatalf("create engine: %v", err)
-	}
-	if err := eng.Connect(); err != nil {
-		c.t.Fatalf("connect: %v", err)
-	}
-	defer eng.Disconnect()
-
-	verifyPath := change.VerifyPath(sqitch.TopDir, sqitch.Extension())
-	if _, err := os.Stat(verifyPath); err != nil {
-		c.t.Fatalf("verify script missing: %v", err)
-	}
-	if err := eng.Verify(change, verifyPath); err != nil {
+	oldTarget, oldFrom, oldTo := verifyTarget, verifyFrom, verifyTo
+	defer func() { verifyTarget, verifyFrom, verifyTo = oldTarget, oldFrom, oldTo }()
+	verifyTarget, verifyFrom, verifyTo = targetURI, changeName, changeName
+	c.out.Reset()
+	if err := runVerify(nil, nil); err != nil {
 		c.t.Fatalf("verify %s: %v", changeName, err)
+	}
+	if !strings.Contains(c.out.String(), "Verify successful") {
+		c.t.Fatalf("expected verify success, got %q", c.out.String())
 	}
 }
 

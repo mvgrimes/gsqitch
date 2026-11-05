@@ -26,11 +26,25 @@ The following core commands have been implemented (invoked as `gsqitch <command>
 *   `add`: Add a new change to the plan.
 *   `deploy`: Deploy changes to a database.
 *   `revert`: Revert deployed changes.
+*   `verify`: Check deployed changes against the plan and run verification scripts.
 *   `status`: Show the current deployment status.
 
 ### Planned Features (Phase 1)
 
 See [PHASE1.md](docs/plan/PHASE1.md) for the detailed implementation plan of the initial foundation.
+
+### Verifying Changes
+
+```bash
+gsqitch verify -t db:mysql://user:password@localhost/database
+gsqitch verify production --from-change first_change --to-change @release
+```
+
+Verification checks change IDs and deployment order, then runs each deployed
+change's verify script. Both range endpoints are inclusive and must be deployed.
+Missing scripts warn without failing; script failures and plan inconsistencies
+are collected and reported together. Pending changes after the last deployment
+are listed, not treated as failures. Verification does not update the registry.
 
 ## Getting Started
 
