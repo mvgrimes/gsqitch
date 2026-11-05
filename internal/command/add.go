@@ -147,8 +147,8 @@ func runAdd(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		// Create directory if needed
-		if err := os.MkdirAll(s.dir, 0755); err != nil {
+		// Create all parent directories, including those in the change name.
+		if err := os.MkdirAll(filepath.Dir(scriptPath), 0755); err != nil {
 			return fmt.Errorf("failed to create directory: %w", err)
 		}
 
