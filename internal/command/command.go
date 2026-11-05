@@ -51,6 +51,12 @@ func resolveTarget(targetArg string) (*target.Target, error) {
 		return nil, fmt.Errorf("invalid target: %w", err)
 	}
 
+	// Explicit targets must inherit the URI engine's client too. Target-level
+	// settings take precedence; an empty result leaves the engine default intact.
+	if client == "" {
+		client = sqitch.Config.GetEngineConfig(t.Engine).Client
+	}
+
 	// Apply registry and client from config if not already set
 	if registry != "" {
 		t.Registry = registry
